@@ -16,6 +16,7 @@
                     <field name="method"/>
                     <field name="tempdir" attrs="{'invisible': [('method', '!=', 'local')]}" groups="base.group_no_one" />
                 </group>
+
                 <div attrs="{'invisible': [('method', '!=', 'sftp')]}">
                     <div class="bg-warning text-warning">
                         <h3>Warning:</h3>
@@ -36,6 +37,21 @@
                             icon="gtk-network"/>
                     </group>
                 </div>
+
+                <div attrs="{'invisible': [('method', '!=', 'oss')]}">
+                    <div class="bg-warning text-warning">
+                        <h3>Warning:</h3>
+                        Use OSS with caution! This connect to Alibaba OSS.
+                    </div>
+                    <group string="OSS Settings">
+                        <field name="oss_key"/>
+                        <field name="oss_secret"/>
+                        <field name="oss_endpoint"/>
+                        <field name="oss_bucket"/>
+                        <field name="oss_folder"/>
+                    </group>
+                </div>
+
                 <separator string="Help" colspan="2"/>
                 <div>
                     Automatic backups of the database can be scheduled as follows:
