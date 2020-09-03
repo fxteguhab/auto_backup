@@ -256,7 +256,7 @@ class DbBackup(models.Model):
 								db.dump_db(self.env.cr.dbname, destiny)
 							backup = backup or destiny.name
 							bucket = rec.oss_connection()
-							bucket.put_object_from_file(self.oss_folder,str(rec.folder)+'/'+str(filename))
+							bucket.put_object_from_file(self.oss_folder+'/'+str(filename),str(rec.folder)+'/'+str(filename))
 						
 					successful |= rec
 
