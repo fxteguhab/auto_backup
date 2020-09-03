@@ -136,7 +136,7 @@ class DbBackup(models.Model):
 			self.env.cr.dbname)
 
 	@api.multi
-	@api.depends("folder", "method", "sftp_host", "sftp_port", "sftp_user")
+	@api.depends("folder", "method", "sftp_host", "sftp_port", "sftp_user","oss_bucket")
 	def _compute_name(self):
 		"""Get the right summary for this job."""
 		for rec in self:
@@ -145,6 +145,8 @@ class DbBackup(models.Model):
 			elif rec.method == "sftp":
 				rec.name = "sftp://%s@%s:%d%s" % (
 					rec.sftp_user, rec.sftp_host, rec.sftp_port, rec.folder)
+			elif rec.method == "oss":
+				rec.name = "%s @ oss" % rec.oss_folder
 
 	@api.constrains("folder", "method")
 	@api.multi
@@ -168,6 +170,14 @@ class DbBackup(models.Model):
 		except (pysftp.CredentialException, pysftp.ConnectionException):
 			_logger.info("Connection Test Failed!", exc_info=True)
 			raise exceptions.Warning(_("Connection Test Failed!"))
+
+	@api.multi
+	def action_oss_test_connection(self):
+		"""Check if the OSS settings are correct."""
+		if self.oss_connection():
+			raise exceptions.Warning(_("Connection Test Succeeded!"))
+		else:
+			raise exceptions.Warning(_("Connection Test Failed!")) 
 
 	@api.multi
 	def action_backup(self):
@@ -195,10 +205,6 @@ class DbBackup(models.Model):
 					else:
 						with rec.custom_tempdir():
 							db.dump_db(self.env.cr.dbname, destiny)
-							#command = 'pg_dump '+self.env.cr.dbname+' -f '+ str(filename) +'.sql'
-							#subprocess.call(command,shell=True)
-							#command =  'zip -r '+str(filename)+' '+str(filename)+'.sql'
-							#subprocess.call(command,shell=True)
 						backup = backup or destiny.name
 				successful |= rec
 
@@ -378,6 +384,6 @@ class DbBackup(models.Model):
 			if self.oss_bucket:
 				params["bucket"] = self.oss_bucket
 
-		auth = oss2.Auth(params[key],params[secret])
-		bucket = oss2.Bucket(auth,params[endpoint],params[bucket])
+		auth = oss2.Auth(params["key"],params["secret"])
+		bucket = oss2.Bucket(auth,params["endpoint"],params["bucket"])
 		return bucket

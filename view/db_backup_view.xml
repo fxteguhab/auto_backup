@@ -49,6 +49,11 @@
                         <field name="oss_endpoint"/>
                         <field name="oss_bucket"/>
                         <field name="oss_folder"/>
+                        <button
+                            name="action_oss_test_connection"
+                            type="object"
+                            string="Test OSS Connection"
+                            icon="gtk-network"/>
                     </group>
                 </div>
 
@@ -78,6 +83,7 @@
                 <field name='name'/>
                 <field name='folder'/>
                 <field name="sftp_host"/>
+                <field name="oss_bucket"/>
             </tree>
         </field>
     </record>
