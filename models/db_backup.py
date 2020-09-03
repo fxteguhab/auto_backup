@@ -54,7 +54,7 @@ class DbBackup(models.Model):
 			 "Set 0 to disable autodeletion.",
 	)
 	method = fields.Selection(
-		selection=[("local", "Local disk"), ("sftp", "Remote SFTP server"),("oss","Alibaba OSS")],
+		selection=[("local", "Local disk"), ("sftp", "Remote SFTP server"),("oss","Local + Alibaba OSS")],
 		default="local",
 		help="Choose the storage method for this backup.",
 	)
@@ -236,17 +236,29 @@ class DbBackup(models.Model):
 		# Ensure a local backup exists if we are going to write it remotely
 		oss = self.filtered(lambda r: r.method == "oss")
 		if oss:
-			if backup:
-				cached = open(backup)
-			else:
-				cached = db.dump_db(self.env.cr.dbname, None)
-				
-			with cached:
-				for rec in oss:
-					with rec.backup_log():
+			with rec.backup_log():
+				# Directory must exist
+				try:
+					os.makedirs(rec.folder)
+				except OSError:
+					pass
+
+				with open(os.path.join(rec.folder, filename),
+						  'wb') as destiny:
+					# Copy the cached backup
+					if backup:
+						with open(backup) as cached:
+							shutil.copyfileobj(cached, destiny)
+					# Generate new backup
+					else:
+						with rec.custom_tempdir():
+							db.dump_db(self.env.cr.dbname, destiny)
+						backup = backup or destiny.name
 						bucket = rec.oss_connection()
 						bucket.put_object_from_file(self.oss_folder,str(rec.folder)+'/'+str(filename))
-						successful |= rec
+					
+				successful |= rec
+
 		# Remove old files for successful backups
 		successful.cleanup()
 
