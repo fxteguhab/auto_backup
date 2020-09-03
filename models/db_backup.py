@@ -245,7 +245,7 @@ class DbBackup(models.Model):
 				for rec in oss:
 					with rec.backup_log():
 						bucket = rec.oss_connection()
-						bucket.put_object_from_file(self.oss_folder,str(rec.folder)+str(filename))
+						bucket.put_object_from_file(self.oss_folder,str(rec.folder)+'/'+str(filename))
 						successful |= rec
 		# Remove old files for successful backups
 		successful.cleanup()
