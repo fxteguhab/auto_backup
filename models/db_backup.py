@@ -13,14 +13,16 @@ from datetime import datetime, timedelta
 from glob import iglob
 from openerp import exceptions, models, fields, api, _, tools
 from openerp.service import db
-#import subprocess
 import logging
 _logger = logging.getLogger(__name__)
 try:
 	import pysftp
 except ImportError:
 	_logger.debug('Cannot import pysftp')
-
+try:
+	import oss2
+except ImportError:
+	_logger.debug('Cannot import pysftp')
 
 class DbBackup(models.Model):
 	_name = 'db.backup'
@@ -52,7 +54,7 @@ class DbBackup(models.Model):
 			 "Set 0 to disable autodeletion.",
 	)
 	method = fields.Selection(
-		selection=[("local", "Local disk"), ("sftp", "Remote SFTP server")],
+		selection=[("local", "Local disk"), ("sftp", "Remote SFTP server"),("oss","Alibaba OSS")],
 		default="local",
 		help="Choose the storage method for this backup.",
 	)
@@ -60,6 +62,36 @@ class DbBackup(models.Model):
 		string="Temporary directory",
 		help="Backups first go to a temporary directory. In case you need to "
 		"put them somewhere else, fill in the directory here",
+	)
+	oss_key = fields.Char(
+		string='OSS AccessKey',
+		help=(
+			"OSS AccessKey",
+		)
+	)
+	oss_secret = fields.Char(
+		string='OSS Secret',
+		help=(
+			"OSS Secret",
+		)
+	)
+	oss_endpoint = fields.Char(
+		string='OSS End Point',
+		help=(
+			"OSS End Point",
+		)
+	)
+	oss_bucket = fields.Char(
+		string='OSS Bucket',
+		help=(
+			"OSS Bucket",
+		)
+	)
+	oss_folder = fields.Char(
+		string='OSS Folder',
+		help=(
+			"OSS Folder",
+		)
 	)
 	sftp_host = fields.Char(
 		string='SFTP Server',
@@ -195,6 +227,20 @@ class DbBackup(models.Model):
 								shutil.copyfileobj(cached, destiny)
 						successful |= rec
 
+		# Ensure a local backup exists if we are going to write it remotely
+		oss = self.filtered(lambda r: r.method == "oss")
+		if oss:
+			if backup:
+				cached = open(backup)
+			else:
+				cached = db.dump_db(self.env.cr.dbname, None)
+				
+			with cached:
+				for rec in oss:
+					with rec.backup_log():
+						with rec.oss_connection() as bucket:
+							bucket.put_object_from_file(self.oss_folder,str(rec.folder)+str(filename))
+						successful |= rec
 		# Remove old files for successful backups
 		successful.cleanup()
 
@@ -257,6 +303,13 @@ class DbBackup(models.Model):
 									os.path.basename(name) < oldest):
 								remote.unlink('%s/%s' % (rec.folder, name))
 
+				elif rec.method == "oss":
+					with rec.oss_connection() as bucket:
+						for obj in oss2.ObjectIterator(bucket):
+							name = str(obj.key)
+							if (name.endswith(".dump.zip") and os.path.basename(name) < oldest):
+								bucket.delete_object(obj.key)
+
 	@api.multi
 	@contextmanager
 	def cleanup_log(self):
@@ -305,3 +358,26 @@ class DbBackup(models.Model):
 			params["password"] = self.sftp_password
 
 		return pysftp.Connection(**params)
+
+	@api.multi
+	def oss_connection(self):
+		params = {
+			"key": self.oss_key,
+			"secret": self.oss_secret,
+			"endpoint" : self.oss_endpoint,
+			"bucket" : self.oss_bucket,
+		}
+		_logger.debug("Trying to connect to oss")
+		
+		if self.oss_key:
+			params["key"] = self.oss_key
+			if self.oss_secret:
+				params["secret"] = self.oss_secret
+			if self.oss_endpoint:
+				params["endpoint"] = self.oss_endpoint
+			if self.oss_bucket:
+				params["bucket"] = self.oss_bucket
+
+		auth = oss2.Auth(params[key],params[secret])
+		bucket = oss2.Bucket(auth,params[endpoint],params[bucket])
+		return bucket
