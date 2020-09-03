@@ -244,8 +244,8 @@ class DbBackup(models.Model):
 			with cached:
 				for rec in oss:
 					with rec.backup_log():
-						with rec.oss_connection() as bucket:
-							bucket.put_object_from_file(self.oss_folder,str(rec.folder)+str(filename))
+						bucket = rec.oss_connection()
+						bucket.put_object_from_file(self.oss_folder,str(rec.folder)+str(filename))
 						successful |= rec
 		# Remove old files for successful backups
 		successful.cleanup()
