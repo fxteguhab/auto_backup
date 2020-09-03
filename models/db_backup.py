@@ -12,8 +12,8 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from glob import iglob
 from openerp import exceptions, models, fields, api, _, tools
-#from openerp.service import db
-import subprocess
+from openerp.service import db
+#import subprocess
 import logging
 _logger = logging.getLogger(__name__)
 try:
