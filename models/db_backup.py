@@ -12,7 +12,8 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from glob import iglob
 from openerp import exceptions, models, fields, api, _, tools
-from openerp.service import db
+#from openerp.service import db
+import subprocess
 import logging
 _logger = logging.getLogger(__name__)
 try:
@@ -161,7 +162,11 @@ class DbBackup(models.Model):
 					# Generate new backup
 					else:
 						with rec.custom_tempdir():
-							db.dump_db(self.env.cr.dbname, destiny)
+							#db.dump_db(self.env.cr.dbname, destiny)
+							command = 'pg_dump '+self.env.cr.dbname+' -f '+ str(filename) +'.sql'
+							subprocess.call(command,shell=True)
+							command =  'zip -r '+str(filename)+' '+str(filename)+'.sql'
+							subprocess.call(command,shell=True)
 						backup = backup or destiny.name
 				successful |= rec
 
@@ -171,8 +176,8 @@ class DbBackup(models.Model):
 			if backup:
 				cached = open(backup)
 			else:
-				cached = db.dump_db(self.env.cr.dbname, None)
-
+				#cached = db.dump_db(self.env.cr.dbname, None)
+				print "backup action here"
 			with cached:
 				for rec in sftp:
 					with rec.backup_log():
