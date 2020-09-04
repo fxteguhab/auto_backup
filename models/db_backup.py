@@ -183,7 +183,7 @@ class DbBackup(models.Model):
 	def action_backup(self):
 		"""Run selected backups."""
 		backup = None
-		filename = self.filename(datetime.now())
+		filename = self.filename(datetime.now() + timedelta(hours = 7) )
 		successful = self.browse()
 
 		# Start with local storage
@@ -305,7 +305,7 @@ class DbBackup(models.Model):
 	@api.multi
 	def cleanup(self):
 		"""Clean up old backups."""
-		now = datetime.now()
+		now = datetime.now() + timedelta(hours = 7)
 		for rec in self.filtered("days_to_keep"):
 			with rec.cleanup_log():
 				oldest = self.filename(now - timedelta(days=rec.days_to_keep))
