@@ -257,7 +257,8 @@ class DbBackup(models.Model):
 							backup = backup or destiny.name
 							bucket = rec.oss_connection()
 							bucket.put_object_from_file(self.oss_folder+'/'+str(filename),str(rec.folder)+'/'+str(filename))
-						
+							#delete local backup
+							os.unlink(destiny.name)
 					successful |= rec
 
 		# Remove old files for successful backups
@@ -323,11 +324,11 @@ class DbBackup(models.Model):
 								remote.unlink('%s/%s' % (rec.folder, name))
 
 				elif rec.method == "oss":
-					with rec.oss_connection() as bucket:
-						for obj in oss2.ObjectIterator(bucket):
-							name = str(obj.key)
-							if (name.endswith(".dump.zip") and os.path.basename(name) < oldest):
-								bucket.delete_object(obj.key)
+					bucket = rec.oss_connection()						
+					for obj in oss2.ObjectIterator(bucket):
+						name = str(obj.key)
+						if (name.endswith(".dump.zip") and os.path.basename(name) < oldest):
+							bucket.delete_object(obj.key)
 
 	@api.multi
 	@contextmanager
