@@ -327,7 +327,7 @@ class DbBackup(models.Model):
 					bucket = rec.oss_connection()						
 					for obj in oss2.ObjectIterator(bucket):
 						name = str(obj.key)
-						if (name.endswith(".dump.zip") and os.path.basename(name) < oldest):
+						if (name.startswith(rec.oss_folder) and name.endswith(".dump.zip") and os.path.basename(name) < oldest):
 							bucket.delete_object(obj.key)
 
 	@api.multi
